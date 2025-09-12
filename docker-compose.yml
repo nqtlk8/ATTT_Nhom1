@@ -1,0 +1,31 @@
+# Docker Compose configuration
+# Chạy cả 2 service với SQLite database
+
+version: '3.8'
+
+services:
+  # Auth Service
+  auth_service:
+    build: ./auth_service
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./auth_service:/app
+      - ./data/auth_service:/app/data
+    networks:
+      - jwt_network
+
+  # Resource Service
+  resource_service:
+    build: ./resource_service
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./resource_service:/app
+      - ./data/resource_service:/app/data
+    networks:
+      - jwt_network
+
+networks:
+  jwt_network:
+    driver: bridge
