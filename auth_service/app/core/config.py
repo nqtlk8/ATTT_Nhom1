@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./data/auth_service.db"
     
     # RSA Key paths
-    PRIVATE_KEY_PATH: str = "rsa_keys/private.pem"
-    PUBLIC_KEY_PATH: str = "rsa_keys/public.pem"
+    PRIVATE_KEY_PATH: str = "auth_service/rsa_keys/private.pem"
+    PUBLIC_KEY_PATH: str = "auth_service/rsa_keys/public.pem"
     
     # JWT settings
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

@@ -10,8 +10,24 @@ from app.core.security import create_access_token, create_refresh_token, verify_
 
 def generate_token_pair(user_id: int, username: str) -> Dict[str, Any]:
     """Generate access and refresh token pair"""
-    # TODO: Implement token pair generation
-    pass
+    data = {
+        "sub": str(user_id),
+        "username": username
+    }
+
+    access_token = create_access_token(
+        data,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = create_refresh_token(
+        data,
+        expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+
+    return {
+        "accessToken": access_token,
+        "refreshToken": refresh_token
+    }
 
 def validate_access_token(token: str) -> Optional[Dict[str, Any]]:
     """Validate access token and return payload"""
