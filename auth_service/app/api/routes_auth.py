@@ -24,8 +24,48 @@ async def login(
     db: Session = Depends(get_db)
 ):
     """Login endpoint - xác thực user và trả về access token + refresh token"""
-    # TODO: Implement login logic
-    pass
+    # Find user by username
+    user = db.query(User).filter(User.username == login_data.username).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password"
+        )
+    
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is deactivated"
+        )
+    
+    # Verify password
+    if not verify_password(login_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password"
+        )
+    
+    # Generate token pair
+    token_data = generate_token_pair(user.id, user.username)
+    
+    # Set refresh token in HTTP-only cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=token_data["refresh_token"],
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60  # 7 days in seconds
+    )
+    
+    # Return access token in response body
+    return TokenResponse(
+        access_token=token_data["access_token"],
+        token_type="bearer",
+        expires_in=token_data["expires_in"]
+    )
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
@@ -39,8 +79,15 @@ async def refresh_token(
 @router.post("/logout")
 async def logout(response: Response):
     """Logout endpoint - clear refresh token cookie"""
-    # TODO: Implement logout logic
-    pass
+    # Clear the refresh token cookie
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax"
+    )
+    
+    return {"message": "Successfully logged out"}
 
 @router.post("/register", response_model=UserResponse)
 async def register(
