@@ -1,30 +1,45 @@
 # Docker Compose configuration
 # Chạy cả 2 service với SQLite database
+# Venv chỉ dùng cho development, Docker tự quản lý dependencies
 
 version: '3.8'
 
 services:
   # Auth Service
   auth_service:
-    build: ./auth_service
+    build: 
+      context: ./auth_service
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
       - ./auth_service:/app
       - ./data/auth_service:/app/data
+      - ./auth_service/rsa_keys:/app/rsa_keys  # Mount RSA keys
+    environment:
+      - DATABASE_URL=sqlite:///./data/auth_service.db
     networks:
       - jwt_network
+    restart: unless-stopped
 
   # Resource Service
   resource_service:
-    build: ./resource_service
+    build:
+      context: ./resource_service
+      dockerfile: Dockerfile
     ports:
       - "8001:8001"
     volumes:
       - ./resource_service:/app
       - ./data/resource_service:/app/data
+      - ./resource_service/rsa_keys:/app/rsa_keys  # Mount RSA keys
+    environment:
+      - DATABASE_URL=sqlite:///./data/resource_service.db
     networks:
       - jwt_network
+    restart: unless-stopped
+    depends_on:
+      - auth_service
 
 networks:
   jwt_network:

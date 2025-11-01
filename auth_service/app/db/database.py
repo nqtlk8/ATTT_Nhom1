@@ -56,15 +56,21 @@ def seed_data():
         # Check if admin user exists
         admin_user = db.query(User).filter(User.username == "admin").first()
         if not admin_user:
-            admin_user = User(
-                username="admin",
-                email="admin@example.com",
-                hashed_password=get_password_hash("admin123"),
-                is_admin=True,
-                is_active=True
-            )
-            db.add(admin_user)
-            db.commit()
-            print("Admin user created: admin/admin123")
+            try:
+                # Đảm bảo bcrypt được load trước khi hash
+                hashed_password = get_password_hash("admin123")
+                admin_user = User(
+                    username="admin",
+                    email="admin@example.com",
+                    hashed_password=hashed_password,
+                    is_admin=True,
+                    is_active=True
+                )
+                db.add(admin_user)
+                db.commit()
+                print("Admin user created: admin/admin123")
+            except Exception as e:
+                print(f"Error creating admin user: {e}")
+                db.rollback()
     finally:
         db.close()

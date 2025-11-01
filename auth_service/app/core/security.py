@@ -1,114 +1,149 @@
+"""
+Security utilities for Auth Service
+Hash password, verify password, tạo JWT với RSA private key
+"""
+
 from functools import lru_cache
-from typing import Dict, Optional
-
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import jwt, JWTError
-from pydantic import BaseModel
-
+from typing import Dict, Any
+from datetime import datetime, timedelta
+from jose import jwt
+from passlib.context import CryptContext
 import os
-from datetime import datetime
+from app.core.config import settings
+
+# Password hashing context
+# Đảm bảo bcrypt được load bằng cách import trước
+try:
+    import bcrypt
+except ImportError:
+    pass
+
+# Khởi tạo CryptContext với bcrypt
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    bcrypt__rounds=12,
+    deprecated="auto"
+)
+
+# Force load bcrypt backend ngay khi import module
+try:
+    # Test hash để đảm bảo bcrypt backend được load
+    _ = pwd_context.hash("init_test")
+except Exception:
+    # Nếu lỗi, thử lại với default settings
+    pass
 
 # ==============================================================
-#  MODULE: core/security.py
-#  Mục đích:
-#     - Xác thực token JWT ký bằng RSA (verify_token)
-#     - Lấy thông tin user hiện tại từ JWT (get_current_user)
-#  Service: Resource Service
+#  Password Hashing
 # ==============================================================
 
-# --- Cấu hình hệ thống ---
-PUBLIC_KEY_PATH = os.getenv("RSA_PUBLIC_KEY_PATH", "rsa_keys/public.pem")
-ALGORITHM = "RS256"
-ACCESS_TOKEN_AUDIENCE = None  # nếu dùng audience, đặt chuỗi ở đây
+def get_password_hash(password: str) -> str:
+    """Hash password using bcrypt
+    
+    Bcrypt có giới hạn 72 bytes, nên cần đảm bảo password được encode đúng cách
+    """
+    # Đảm bảo password là string và encode UTF-8
+    if isinstance(password, bytes):
+        password = password.decode('utf-8')
+    
+    # Bcrypt giới hạn 72 bytes, truncate nếu cần (hiếm khi xảy ra)
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password = password_bytes[:72].decode('utf-8', errors='ignore')
+    
+    return pwd_context.hash(password)
 
-# --- Định nghĩa model cho payload ---
-class TokenPayload(BaseModel):
-    sub: str  # user id
-    exp: int
-    iat: Optional[int] = None
-    iss: Optional[str] = None
-    roles: Optional[list] = None
-    email: Optional[str] = None
-
-
-# --- Đọc public key ---
-@lru_cache()
-def load_public_key() -> str:
-    """Đọc public key từ file PEM và cache lại."""
-    with open(PUBLIC_KEY_PATH, "r", encoding="utf-8") as f:
-        return f.read()
-
-
-# --- Xác thực token ---
-def verify_token(token: str) -> Dict:
-    """Giải mã & xác thực JWT ký bằng RSA public key."""
-    public_key = load_public_key()
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password against hash"""
     try:
-        payload = jwt.decode(token, public_key, algorithms=[ALGORITHM], audience=ACCESS_TOKEN_AUDIENCE)
-    except JWTError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Không thể xác thực token: {str(e)}",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    try:
-        token_data = TokenPayload(**payload)
+        # Đảm bảo password là string
+        if isinstance(plain_password, bytes):
+            plain_password = plain_password.decode('utf-8')
+        
+        # Bcrypt giới hạn 72 bytes, truncate nếu cần
+        password_bytes = plain_password.encode('utf-8')
+        if len(password_bytes) > 72:
+            plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
+        
+        return pwd_context.verify(plain_password, hashed_password)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Dữ liệu token không hợp lệ: {str(e)}",
-            headers={"WWW-Authenticate": "Bearer"},
+        # Log error để debug
+        print(f"Error verifying password: {e}")
+        return False
+
+# ==============================================================
+#  JWT Token Creation (RSA Private Key)
+# ==============================================================
+
+@lru_cache()
+def load_private_key() -> str:
+    """Đọc private key từ file PEM và cache lại."""
+    # Thử nhiều đường dẫn để tìm private key
+    possible_paths = [
+        # Đường dẫn tương đối từ working directory (Docker: /app, Local: auth_service/)
+        settings.PRIVATE_KEY_PATH,
+        # Đường dẫn tuyệt đối từ thư mục auth_service (local development)
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), settings.PRIVATE_KEY_PATH),
+        # Đường dẫn từ thư mục hiện tại
+        os.path.join(os.getcwd(), settings.PRIVATE_KEY_PATH),
+        # Đường dẫn trong Docker (/app)
+        os.path.join("/app", settings.PRIVATE_KEY_PATH),
+    ]
+    
+    private_key_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            private_key_path = path
+            break
+    
+    if not private_key_path:
+        error_msg = f"Private key not found. Tried paths: {possible_paths}"
+        raise FileNotFoundError(error_msg)
+    
+    try:
+        with open(private_key_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        raise FileNotFoundError(f"Cannot read private key from {private_key_path}: {str(e)}")
+
+def create_access_token(data: Dict[str, Any], expires_delta: timedelta = None) -> str:
+    """
+    Tạo JWT access token sử dụng RSA private key (RS256)
+    
+    Args:
+        data: Dictionary chứa thông tin user (sub, username, email, etc.)
+        expires_delta: Thời gian hết hạn của token
+    
+    Returns:
+        JWT token string
+    """
+    to_encode = data.copy()
+    
+    # JWT yêu cầu exp và iat là int (Unix timestamp)
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    if expires_delta:
+        expire = now + expires_delta
+    else:
+        expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    to_encode.update({
+        "exp": int(expire.timestamp()),  # Convert to Unix timestamp
+        "iat": int(now.timestamp()),      # Convert to Unix timestamp
+        "iss": "auth_service",            # Issuer
+    })
+    
+    try:
+        private_key = load_private_key()
+    except Exception as e:
+        raise ValueError(f"Không thể load private key: {str(e)}")
+    
+    try:
+        encoded_jwt = jwt.encode(
+            to_encode,
+            private_key,
+            algorithm=settings.ALGORITHM
         )
-
-    if token_data.exp and datetime.utcfromtimestamp(token_data.exp) < datetime.utcnow():
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token đã hết hạn",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return payload
-
-
-# --- Tạo HTTPBearer dependency ---
-security_scheme = HTTPBearer(auto_error=False)
-
-
-# --- Hàm giả lập lấy user từ DB ---
-def get_user_by_id_stub(user_id: str):
-    """Placeholder: thay bằng truy vấn DB thật."""
-    fake_users = {
-        "1": {"id": "1", "username": "alice", "email": "alice@example.com", "roles": ["user"]},
-        "2": {"id": "2", "username": "bob", "email": "bob@example.com", "roles": ["admin"]},
-    }
-    return fake_users.get(user_id)
-
-
-# --- Dependency FastAPI ---
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)):
-    """Lấy user hiện tại từ JWT gửi trong header Authorization."""
-    if not credentials or credentials.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Thiếu hoặc sai định dạng Authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token = credentials.credentials
-    payload = verify_token(token)
-
-    user_id = payload.get("sub")
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token thiếu trường 'sub' (user id)",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user = get_user_by_id_stub(user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy user")
-
-    return user
+        return encoded_jwt
+    except Exception as e:
+        raise ValueError(f"Không thể tạo JWT token: {str(e)}")

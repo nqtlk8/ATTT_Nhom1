@@ -1,39 +1,40 @@
 """
 Token management utilities
-Hàm tạo access/refresh token, validate tokens
+Hàm tạo access token, validate tokens
 """
 
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from datetime import timedelta
+from typing import Dict, Any
 from app.core.config import settings
-from app.core.security import create_access_token, create_refresh_token, verify_token
+from app.core.security import create_access_token
 
-def generate_token_pair(user_id: int, username: str) -> Dict[str, Any]:
-    """Generate access and refresh token pair"""
-    # TODO: Implement token pair generation
-    pass
-
-def validate_access_token(token: str) -> Optional[Dict[str, Any]]:
-    """Validate access token and return payload"""
-    # TODO: Implement access token validation
-    pass
-
-def validate_refresh_token(token: str) -> Optional[Dict[str, Any]]:
-    """Validate refresh token and return payload"""
-    # TODO: Implement refresh token validation
-    pass
-
-def refresh_access_token(refresh_token: str) -> Optional[str]:
-    """Generate new access token from refresh token"""
-    # TODO: Implement access token refresh
-    pass
-
-def revoke_token(token: str) -> bool:
-    """Revoke a token (add to blacklist)"""
-    # TODO: Implement token revocation
-    pass
-
-def is_token_blacklisted(token: str) -> bool:
-    """Check if token is blacklisted"""
-    # TODO: Implement blacklist check
-    pass
+def generate_access_token(user_id: int, username: str, email: str = None) -> Dict[str, Any]:
+    """
+    Generate access token only (không cần refresh token)
+    
+    Args:
+        user_id: User ID
+        username: Username
+        email: Email (optional)
+    
+    Returns:
+        Dictionary chứa access_token, token_type, expires_in
+    """
+    # Tạo payload cho JWT
+    token_data = {
+        "sub": str(user_id),  # Subject (user id)
+        "username": username,
+    }
+    
+    if email:
+        token_data["email"] = email
+    
+    # Tạo token với thời gian hết hạn
+    expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data=token_data, expires_delta=expires_delta)
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # seconds
+    }

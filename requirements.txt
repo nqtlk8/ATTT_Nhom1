@@ -14,12 +14,15 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 PyJWT==2.8.0
 
-# Cryptography
+# Cryptography (RSA keys generation and JWT signing)
 cryptography>=41.0.0
 
-# HTTP client
+# Email validation (for user registration)
+email-validator==2.1.0
+
+# HTTP client (for testing)
 httpx==0.25.2
 
-# Development
+# Development & Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1

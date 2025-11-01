@@ -3,20 +3,28 @@ Pydantic schemas for authentication
 LoginRequest, TokenResponse, và các schemas khác
 """
 
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 
 class LoginRequest(BaseModel):
     """Login request schema"""
     username: str
-    password: str
+    password: str = Field(..., min_length=1, max_length=100)
 
 class UserCreate(BaseModel):
     """User creation schema"""
-    username: str
+    username: str = Field(..., min_length=1, max_length=50)
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=1, max_length=100)
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password_length(cls, v: str) -> str:
+        """Đảm bảo password không quá 72 bytes (giới hạn của bcrypt)"""
+        password_bytes = v.encode('utf-8')
+        if len(password_bytes) > 72:
+            raise ValueError('Password quá dài (tối đa 72 bytes)')
+        return v
 
 class UserResponse(BaseModel):
     """User response schema"""
@@ -36,12 +44,3 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
 
-class RefreshTokenRequest(BaseModel):
-    """Refresh token request schema"""
-    refresh_token: str
-
-class TokenData(BaseModel):
-    """Token data schema"""
-    user_id: Optional[int] = None
-    username: Optional[str] = None
-    exp: Optional[datetime] = None

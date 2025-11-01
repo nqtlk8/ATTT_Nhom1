@@ -4,95 +4,48 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
+dist/
+build/
+.pytest_cache/
 *.egg
-MANIFEST
 
 # Virtual Environment
 venv/
 env/
 ENV/
 .venv/
-.env/
-
-# Environment variables
-.env
-.env.local
-.env.production
-
-# Database - Commented out to allow pushing database files
-# *.db
-# *.sqlite3
-# data/
-
-# RSA Keys (for security) - Commented out to allow pushing keys
-# *.pem
-# rsa_keys/
+venv.bak/
+env.bak/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.project
+.pydevproject
+.settings/
 
-# OS
-.DS_Store
-Thumbs.db
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
 
 # Logs
 *.log
 logs/
+*.log.*
 
-# Docker
-.dockerignore
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Alembic
-alembic/versions/
-
-# Docker
-.dockerignore
-
-# Node.js (if using frontend)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Temporary files
-*.tmp
-*.temp
-*.bak
-*.swp
-*.swo
-*~
-
-# IDE specific files
-.vscode/settings.json
-.vscode/launch.json
-.vscode/extensions.json
-.idea/
-*.sublime-project
-*.sublime-workspace
-
-# OS generated files
+# OS
 .DS_Store
 .DS_Store?
 ._*
@@ -100,3 +53,33 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
+
+# Docker
+.dockerignore
+
+# RSA Keys (nếu không muốn commit keys vào git)
+# Uncomment nếu muốn ignore RSA keys
+# rsa_keys/*.pem
+# !rsa_keys/.gitkeep
+
+# Data files
+data/*.db
+data/**/*.db
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+.cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
