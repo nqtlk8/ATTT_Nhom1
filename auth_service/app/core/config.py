@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     
     # Security settings
     SECRET_KEY: str = "your-secret-key-here"
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8001"]
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8001" , "http://127.0.0.1:5500"]
     
     # Cookie settings
     REFRESH_TOKEN_COOKIE_NAME: str = "refresh_token"

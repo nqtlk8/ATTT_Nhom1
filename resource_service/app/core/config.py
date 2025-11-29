@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "RS256"
     
     # Security settings
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000" , "http://127.0.0.1:5500"]
     
     class Config:
         env_file = ".env"

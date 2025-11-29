@@ -322,11 +322,24 @@
 
         function showTab(tabName) {
             // Hide all tabs
+            const tabs = document.querySelectorAll('.tab');
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-            // Show selected tab
-            event.target.classList.add('active');
+            // Determine which tab button should be active based on tabName
+            let activeTabButton = null;
+            if (tabName === 'register') {
+                activeTabButton = tabs[0];
+            } else if (tabName === 'login') {
+                activeTabButton = tabs[1];
+            } else if (tabName === 'products') {
+                activeTabButton = tabs[2];
+            }
+
+            if (activeTabButton) {
+                activeTabButton.classList.add('active');
+            }
+
             document.getElementById(tabName + '-tab').classList.add('active');
         }
 
