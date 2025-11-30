@@ -1,6 +1,6 @@
 """
 Script to generate RSA key pair for JWT authentication
-Tạo private key cho auth_service và public key cho resource_service
+Tạo private key cho auth_service (để ký token) và public key cho resource_service (để verify token)
 """
 
 from cryptography.hazmat.primitives import serialization
@@ -41,18 +41,13 @@ def generate_rsa_keypair():
     with open("auth_service/rsa_keys/private.pem", "wb") as f:
         f.write(private_pem)
     
-    # Write public key to auth_service
-    with open("auth_service/rsa_keys/public.pem", "wb") as f:
-        f.write(public_pem)
-    
-    # Copy public key to resource_service
+    # Write public key to resource_service
     with open("resource_service/rsa_keys/public.pem", "wb") as f:
         f.write(public_pem)
     
     print("RSA key pair generated successfully!")
     print("Private key: auth_service/rsa_keys/private.pem")
-    print("Public key: auth_service/rsa_keys/public.pem")
-    print("Public key copied to: resource_service/rsa_keys/public.pem")
+    print("Public key: resource_service/rsa_keys/public.pem")
 
 if __name__ == "__main__":
     generate_rsa_keypair()
